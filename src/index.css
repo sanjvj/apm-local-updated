@@ -1,0 +1,51 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  /* Color Palette Tokens */
+  --crimson: #C0202A;
+  --crimson-dark: #8B1A1A;
+  --red-dark: #6B0F14;
+  --gold: #F0A020;
+  --gold-dark: #C8860A;
+  --ivory: #FAF7F2;
+  --ivory-warm: #F5EEE1;
+  --mahogany: #2C1810;
+  --mahogany-soft: #4A2F22;
+  --line: rgba(44, 24, 16, 0.12);
+  --success: #2F7D4F;
+
+  /* Elevation & Shadow Tokens */
+  --shadow-sm: 0 1px 3px rgba(44, 24, 16, 0.08), 0 1px 2px rgba(44, 24, 16, 0.06);
+  --shadow-md: 0 4px 14px rgba(44, 24, 16, 0.10), 0 2px 6px rgba(44, 24, 16, 0.06);
+  --shadow-lg: 0 12px 32px rgba(44, 24, 16, 0.16), 0 4px 12px rgba(44, 24, 16, 0.08);
+
+  /* Radius Token */
+  --radius: 14px;
+}
+
+@layer base {
+  body {
+    background-color: var(--ivory);
+    color: var(--mahogany);
+    font-family: 'Noto Serif', serif;
+    font-weight: 400;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Noto Serif', serif;
+  }
+}
+
+/* Reduced Motion Preference */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

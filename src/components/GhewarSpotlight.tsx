@@ -1,6 +1,8 @@
 import type { FC } from 'react';
 import type { MenuItem } from '../types/menu';
 import { useCart } from '../context/CartContext';
+import { Plus, Minus, Sparkles, Check } from 'lucide-react';
+import { useState } from 'react';
 
 export interface GhewarSpotlightProps {
   item: MenuItem;
@@ -8,77 +10,135 @@ export interface GhewarSpotlightProps {
 }
 
 export const GhewarSpotlight: FC<GhewarSpotlightProps> = ({ item, className = '' }) => {
-  const { addToCart } = useCart();
+  const { getItemQty, addToCart, removeFromCart } = useCart();
+  const quantity = getItemQty(item.id);
+  const [isAddedToast, setIsAddedToast] = useState(false);
+
+  const handleAdd = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    addToCart(item.id);
+    setIsAddedToast(true);
+    setTimeout(() => setIsAddedToast(false), 1500);
+  };
 
   return (
     <div className={`w-full ${className}`}>
       <div
-        onClick={() => addToCart(item.id)}
-        role="button"
-        tabIndex={0}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter' || e.key === ' ') {
-            addToCart(item.id);
-          }
-        }}
         className="
-          relative w-full rounded-[18px] p-4 sm:p-5 bg-gradient-to-br from-[#FFF8EC] to-[#FCEDCB]
-          border border-[var(--gold)]/40 shadow-[var(--shadow-sm)] hover:shadow-[var(--shadow-md)]
-          transition-all duration-200 cursor-pointer active:scale-[0.995]
-          flex items-center gap-4 sm:gap-6 group overflow-hidden
+          relative w-full rounded-3xl p-5 sm:p-7
+          bg-gradient-to-br from-[#FFFDF9] via-[#FAF7F2] to-[#F5EEE1]
+          border-2 border-[#D4AF37]/50 shadow-md hover:shadow-xl
+          transition-all duration-300 flex flex-col sm:flex-row items-center gap-6 group overflow-hidden select-none
         "
       >
-        {/* Badge: Overlapping top-left edge */}
-        <div className="absolute -top-1 left-4 sm:left-6 bg-[var(--gold)] text-[var(--red-dark)] text-[10px] font-mono font-bold px-2.5 py-0.5 rounded-full shadow-xs border border-[var(--gold-dark)]/30 tracking-wide uppercase z-10">
-          ★ Signature
+        {/* Background Decorative Glow */}
+        <div className="absolute -right-12 -bottom-12 w-48 h-48 rounded-full bg-[#E5A93B]/10 blur-2xl pointer-events-none" />
+
+        {/* Large Product Image Container */}
+        <div className="relative w-full sm:w-52 sm:h-52 aspect-[4/3] sm:aspect-square rounded-2xl overflow-hidden shadow-md shrink-0 border border-[#EACFA5]">
+          {item.imageUrl ? (
+            <img
+              src={item.imageUrl}
+              alt={item.name}
+              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+            />
+          ) : (
+            <div className="w-full h-full bg-gradient-to-br from-[#DCA42B] to-[#915809] flex items-center justify-center text-white">
+              <span className="font-display italic font-bold text-3xl">AM</span>
+            </div>
+          )}
+
+          {/* Clean Non-Red Category Tag at Top Right Corner */}
+          <div className="absolute top-3 right-3 z-10">
+            <span className="px-3 py-1 rounded-full bg-[#2C1810]/85 backdrop-blur-md text-[#E5A93B] border border-[#D4AF37]/40 font-mono text-[10px] font-bold uppercase tracking-wider shadow-sm flex items-center gap-1">
+              <Sparkles className="w-3 h-3 text-[#E5A93B]" />
+              <span>Signature Special</span>
+            </span>
+          </div>
         </div>
 
-        {/* 84x84px Radial Gradient Concentric Disc Thumbnail */}
-        <div className="relative w-[84px] h-[84px] min-w-[84px] min-h-[84px] sm:w-[96px] sm:h-[96px] sm:min-w-[96px] sm:min-h-[96px] rounded-2xl overflow-hidden shadow-inner flex items-center justify-center bg-gradient-to-br from-[#F5B041] via-[#D35400] to-[#7E5109] border border-amber-400/40 shrink-0">
-          {/* Concentric Dashed Ring SVG Overlay */}
-          <svg className="absolute inset-0 w-full h-full p-1 opacity-70" viewBox="0 0 84 84">
-            <circle
-              cx="42"
-              cy="42"
-              r="34"
-              fill="none"
-              stroke="#FFF"
-              strokeWidth="1.5"
-              strokeDasharray="4 3"
-            />
-            <circle
-              cx="42"
-              cy="42"
-              r="22"
-              fill="none"
-              stroke="#F0A020"
-              strokeWidth="1.5"
-              strokeDasharray="3 2"
-            />
-            <circle cx="42" cy="42" r="10" fill="none" stroke="#FFF" strokeWidth="1" />
-          </svg>
-          <span className="font-display italic text-amber-100 font-bold text-lg sm:text-xl drop-shadow z-10">
-            APM
-          </span>
-        </div>
+        {/* Product Details Info Column */}
+        <div className="flex flex-col flex-1 min-w-0 justify-between gap-3 w-full">
+          <div className="flex flex-col gap-1.5">
+            <div className="flex items-center gap-2">
+              <span className="px-2.5 py-0.5 rounded-full bg-[#E5A93B]/20 text-[#2C1810] font-mono text-[10px] font-bold uppercase border border-[#E5A93B]/40">
+                Today's Special
+              </span>
+              {item.meta && (
+                <span className="text-[11px] font-sans font-medium text-black/60">
+                  • {item.meta}
+                </span>
+              )}
+            </div>
 
-        {/* Info Column */}
-        <div className="flex flex-col flex-1 min-w-0 gap-1">
-          <h3 className="font-display font-bold text-[20px] sm:text-[22px] text-[var(--mahogany)] leading-tight tracking-tight group-hover:text-[var(--crimson)] transition-colors">
-            {item.name}
-          </h3>
-          <p className="font-sans text-xs sm:text-sm text-[var(--mahogany-soft)] opacity-85 line-clamp-2">
-            {item.description}
-          </p>
+            <h3 className="font-display font-bold text-2xl sm:text-3xl text-[#2C1810] leading-tight tracking-tight group-hover:text-[#8B1A1A] transition-colors">
+              {item.name}
+            </h3>
 
-          {/* Footer Row */}
-          <div className="flex items-center justify-between mt-1 pt-2 border-t border-[var(--mahogany)]/10">
-            <span className="font-mono font-bold text-base sm:text-lg text-[var(--red-dark)]">
-              ₹{item.price}
-            </span>
-            <span className="font-mono text-[11px] sm:text-xs font-semibold text-[var(--gold-dark)] bg-white/70 px-2.5 py-0.5 rounded-full border border-[var(--gold)]/30">
-              Only {item.stock} left today
-            </span>
+            <p className="font-sans text-xs sm:text-sm text-[#2C1810]/75 leading-relaxed line-clamp-2">
+              {item.description}
+            </p>
+          </div>
+
+          {/* Pricing & Cart Stepper / Add Button */}
+          <div className="flex items-center justify-between gap-4 pt-3 border-t border-[#EACFA5]">
+            <div className="flex flex-col">
+              <span className="font-sans text-[10px] uppercase tracking-wider text-black/50 font-bold">
+                Swiggy Price
+              </span>
+              <span className="font-mono font-bold text-xl sm:text-2xl text-[#8B1A1A]">
+                ₹{item.price}
+              </span>
+            </div>
+
+            <div className="shrink-0">
+              {quantity === 0 ? (
+                <button
+                  type="button"
+                  onClick={handleAdd}
+                  className={`px-5 py-2.5 rounded-xl font-sans font-bold text-xs shadow-md transition-all flex items-center gap-1.5 cursor-pointer ${
+                    isAddedToast
+                      ? 'bg-emerald-600 text-white scale-105'
+                      : 'bg-[#8B1A1A] hover:bg-[#6B0F14] text-white active:scale-95'
+                  }`}
+                >
+                  {isAddedToast ? (
+                    <>
+                      <Check className="w-4 h-4 stroke-[2.5]" />
+                      <span>ADDED</span>
+                    </>
+                  ) : (
+                    <>
+                      <Plus className="w-4 h-4 stroke-[2.5]" />
+                      <span>ADD TO CART</span>
+                    </>
+                  )}
+                </button>
+              ) : (
+                <div className="flex items-center gap-2 bg-white border border-[#EACFA5] rounded-xl p-1.5 shadow-sm">
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      removeFromCart(item.id);
+                    }}
+                    className="w-7 h-7 rounded-lg bg-[#F5EEE1] text-[#2C1810] hover:bg-[#8B1A1A] hover:text-white flex items-center justify-center transition-colors cursor-pointer"
+                  >
+                    <Minus className="w-3.5 h-3.5 stroke-[2.5]" />
+                  </button>
+                  <span className="font-mono font-bold text-sm text-[#2C1810] px-2">
+                    {quantity}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={handleAdd}
+                    className="w-7 h-7 rounded-lg bg-[#E5A93B] text-[#2C1810] hover:bg-[#C8860A] flex items-center justify-center transition-colors cursor-pointer"
+                  >
+                    <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>

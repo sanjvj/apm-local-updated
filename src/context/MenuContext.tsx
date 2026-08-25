@@ -24,7 +24,9 @@ export const MenuProvider: FC<{ children: ReactNode }> = ({ children }) => {
       const saved = localStorage.getItem(MENU_STORAGE_KEY);
       if (saved) {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        if (Array.isArray(parsed) && parsed.length > 0 && parsed.some((i: MenuItem) => i.id === '101')) {
+          return parsed;
+        }
       }
       return MENU_ITEMS;
     } catch {

@@ -57,41 +57,24 @@ export const MenuItemCard: FC<MenuItemCardProps> = ({ item, className = '' }) =>
           </div>
         )}
 
-        {/* Top-Left Category Overlay Tag */}
-        <div className="absolute top-2.5 left-2.5 z-10">
+        {/* Top-Right Corner Category & Tag Badge (Neat & Clean, Non-Red) */}
+        <div className="absolute top-2.5 right-2.5 z-10">
           <span className="
-            px-2 py-0.5 rounded-full bg-black/45 backdrop-blur-md text-white
-            font-mono text-[9px] font-bold tracking-wider uppercase border border-white/15 shadow-2xs
+            px-2.5 py-1 rounded-full bg-[#2C1810]/85 text-[#E5A93B] border border-[#D4AF37]/40 backdrop-blur-md
+            font-mono text-[9.5px] font-bold tracking-wider uppercase shadow-xs flex items-center gap-1
           ">
-            {formattedCategoryLabel}
+            <span>{item.stockBadge || formattedCategoryLabel}</span>
           </span>
         </div>
 
-        {/* Stock Badge / Out of Stock Banner */}
-        {isOutOfStock ? (
+        {/* Stock Banner if out of stock */}
+        {isOutOfStock && (
           <div className="absolute inset-0 bg-black/60 backdrop-blur-xs flex items-center justify-center z-20">
-            <span className="px-3 py-1 bg-red-600 text-white font-mono text-xs font-bold uppercase rounded-md shadow-md">
+            <span className="px-3 py-1 bg-zinc-800 text-white font-mono text-xs font-bold uppercase rounded-md shadow-md border border-white/20">
               OUT OF STOCK
             </span>
           </div>
-        ) : item.stockBadge ? (
-          <div className="absolute bottom-2.5 right-2.5 z-10">
-            <span
-              className={`
-                px-2 py-0.5 rounded-full text-[9.5px] font-mono font-bold uppercase tracking-wide border shadow-2xs
-                ${
-                  item.badgeType === 'gold'
-                    ? 'bg-[var(--gold)] text-[var(--mahogany)] border-[var(--gold-dark)]/30 font-bold'
-                    : item.badgeType === 'dark'
-                    ? 'bg-[var(--mahogany)] text-[var(--ivory)] border-white/20'
-                    : 'bg-[var(--crimson)] text-white border-white/20'
-                }
-              `}
-            >
-              {item.stockBadge}
-            </span>
-          </div>
-        ) : null}
+        )}
       </div>
 
       {/* Card Content Below Image */}

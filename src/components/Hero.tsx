@@ -2,10 +2,10 @@ import type { FC } from 'react';
 import { useState } from 'react';
 import {
   ShieldAlert,
-  Store,
+  ShoppingBag,
   Plus,
+  Minus,
   Check,
-  ChevronRight,
   X,
   Search,
   Menu as MenuIcon,
@@ -14,16 +14,20 @@ import {
   Phone,
   Clock,
   MessageSquare,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 import { Container } from './Container';
 import { BrandLogo } from './BrandLogo';
 import { useCart } from '../context/CartContext';
+import { useMenu } from '../context/MenuContext';
 import type { MenuItem } from '../types/menu';
 
 export interface HeroProps {
   spotlightItem?: MenuItem;
   onNavigateToAdmin?: () => void;
   onNavigateToTrack?: () => void;
+  onNavigateToOrders?: () => void;
   onScrollToMenu?: () => void;
   onOpenStory?: () => void;
   onOpenReviews?: () => void;
@@ -34,29 +38,37 @@ export const Hero: FC<HeroProps> = ({
   spotlightItem,
   onNavigateToAdmin,
   onNavigateToTrack,
+  onNavigateToOrders,
   onScrollToMenu,
   onOpenStory,
   onOpenReviews,
   onOpenContact,
 }) => {
-  const { addToCart, cart } = useCart();
+  const { menuItems } = useMenu();
+  const { addToCart, removeFromCart, cart } = useCart();
+  const [selectedProductIndex, setSelectedProductIndex] = useState<number>(0);
   const [isAdded, setIsAdded] = useState(false);
-  const [showVendorModal, setShowVendorModal] = useState(false);
   const [showStoryModal, setShowStoryModal] = useState(false);
   const [showReviewsModal, setShowReviewsModal] = useState(false);
   const [showContactModal, setShowContactModal] = useState(false);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [activeNav, setActiveNav] = useState<'home' | 'collections' | 'story' | 'reviews' | 'contact'>('home');
 
-  const featuredItem = spotlightItem || {
-    id: 'malli-malai',
-    name: 'Classic Malli Malai (Gajra)',
-    price: 120,
-    meta: 'Fresh Madurai Jasmine Garland',
-    description: 'Freshly woven, fragrant Madurai Malli gajra.',
+  // Featured list from live MenuContext
+  const featuredList = menuItems.length > 0 ? menuItems : [
+    { id: '101', name: 'Malai Ghewar', price: 450, meta: 'Big (Serves 4) | Small (Serves 2)', imageUrl: '/products/malai_ghewar.jpg' }
+  ];
+
+  const featuredItem = spotlightItem || featuredList[selectedProductIndex % featuredList.length] || featuredList[0];
+  const itemQty = cart[featuredItem.id] || 0;
+
+  const handleNextProduct = () => {
+    setSelectedProductIndex((prev) => (prev + 1) % featuredList.length);
   };
 
-  const itemQty = cart[featuredItem.id] || 0;
+  const handlePrevProduct = () => {
+    setSelectedProductIndex((prev) => (prev - 1 + featuredList.length) % featuredList.length);
+  };
 
   const handleAddFeatured = () => {
     addToCart(featuredItem.id);
@@ -118,17 +130,6 @@ export const Hero: FC<HeroProps> = ({
         />
       </div>
 
-      {/* Decorative Jasmine Icon */}
-      <div className="absolute bottom-[22%] left-1/2 -translate-x-1/2 pointer-events-none z-[1] opacity-70 hidden lg:block">
-        <svg width="28" height="28" viewBox="0 0 32 32" fill="none">
-          <circle cx="16" cy="16" r="3" fill="#D4AF37" />
-          <ellipse cx="16" cy="8" rx="3.5" ry="5" fill="#C8A02E" opacity="0.8" />
-          <ellipse cx="16" cy="24" rx="3.5" ry="5" fill="#C8A02E" opacity="0.8" />
-          <ellipse cx="8" cy="16" rx="5" ry="3.5" fill="#B8901E" opacity="0.8" />
-          <ellipse cx="24" cy="16" rx="5" ry="3.5" fill="#B8901E" opacity="0.8" />
-        </svg>
-      </div>
-
       {/* ── Main Content Container ────────────────────────────── */}
       <Container className="relative z-10 pt-4 sm:pt-5 pb-6 sm:pb-10 flex flex-col">
         {/* ═══ TOP NAVIGATION BAR ═══ */}
@@ -179,14 +180,16 @@ export const Hero: FC<HeroProps> = ({
                 <span>Admin Panel</span>
               </button>
             )}
-            <button
-              type="button"
-              onClick={() => setShowVendorModal(true)}
-              className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-white/25 bg-white/[0.08] hover:bg-white/[0.15] text-[11px] font-sans font-medium text-white/90 transition-all cursor-pointer"
-            >
-              <Store className="w-3 h-3" />
-              <span>Vendor</span>
-            </button>
+            {onNavigateToOrders && (
+              <button
+                type="button"
+                onClick={onNavigateToOrders}
+                className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-white/25 bg-white/[0.08] hover:bg-white/[0.15] text-[11px] font-sans font-medium text-white/90 transition-all cursor-pointer"
+              >
+                <ShoppingBag className="w-3 h-3 text-[#E5A93B]" />
+                <span>Your Orders</span>
+              </button>
+            )}
 
             {/* Mobile Hamburger Toggle Button */}
             <button
@@ -249,13 +252,15 @@ export const Hero: FC<HeroProps> = ({
               >
                 <span>📍 Contact & Kitchen</span>
               </button>
-              <button
-                type="button"
-                onClick={() => { setShowMobileMenu(false); setShowVendorModal(true); }}
-                className="flex items-center gap-2 p-2.5 rounded-xl bg-white/5 hover:bg-white/15 text-left cursor-pointer"
-              >
-                <span>🏬 Karigar & Vendor</span>
-              </button>
+              {onNavigateToOrders && (
+                <button
+                  type="button"
+                  onClick={() => { setShowMobileMenu(false); onNavigateToOrders(); }}
+                  className="flex items-center gap-2 p-2.5 rounded-xl bg-white/5 hover:bg-white/15 text-left cursor-pointer"
+                >
+                  <span>📦 Your Orders</span>
+                </button>
+              )}
             </div>
           </div>
         )}
@@ -309,84 +314,142 @@ export const Hero: FC<HeroProps> = ({
             </div>
           </div>
 
-          {/* RIGHT COLUMN: Featured Product Card */}
-          <div className="lg:col-span-5 flex items-start justify-center w-full">
+          {/* RIGHT COLUMN: Featured Product Card connected to live products */}
+          <div className="lg:col-span-5 flex flex-col items-center justify-center w-full">
             <div
-              className="w-full max-w-[370px] rounded-[22px] p-5 sm:p-6 relative overflow-hidden flex flex-col min-h-[370px] sm:min-h-[400px] border border-white/15"
+              className="w-full max-w-[370px] rounded-[22px] p-5 sm:p-6 relative overflow-hidden flex flex-col justify-between min-h-[390px] sm:min-h-[420px] border border-white/20 shadow-2xl"
               style={{
-                background: 'linear-gradient(170deg, #DCA42B 0%, #C4871C 40%, #A06810 70%, #784606 100%)',
-                boxShadow: '0 20px 50px rgba(0,0,0,0.55), inset 0 1px 0 rgba(255,255,255,0.15)',
+                background: 'linear-gradient(170deg, #9E1F27 0%, #7A141A 40%, #520B10 70%, #2E0407 100%)',
+                boxShadow: '0 20px 50px rgba(0,0,0,0.65), inset 0 1px 0 rgba(255,255,255,0.2)',
               }}
             >
               <div
                 className="absolute inset-0 pointer-events-none rounded-[22px]"
                 style={{
-                  background: 'radial-gradient(ellipse 70% 50% at 50% 35%, rgba(255,255,255,0.18) 0%, transparent 60%)',
+                  background: 'radial-gradient(ellipse 80% 60% at 50% 30%, rgba(229,169,59,0.2) 0%, transparent 70%)',
                 }}
               />
 
-              <div className="flex items-center justify-between gap-2 relative z-10 mb-auto">
-                <div className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-black/15 border border-white/20 text-[9px] font-sans font-bold text-white uppercase tracking-wider">
-                  <span className="text-[10px] leading-none">✦</span>
-                  <span>HANDCRAFTED</span>
+              {/* Card Header Badges & Carousel Arrows */}
+              <div className="flex items-center justify-between gap-2 relative z-10">
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={handlePrevProduct}
+                    className="p-1 rounded-full bg-black/40 hover:bg-black/70 text-white transition-all cursor-pointer border border-white/20"
+                    title="Previous Featured Product"
+                  >
+                    <ChevronLeft className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleNextProduct}
+                    className="p-1 rounded-full bg-black/40 hover:bg-black/70 text-white transition-all cursor-pointer border border-white/20"
+                    title="Next Featured Product"
+                  >
+                    <ChevronRight className="w-3.5 h-3.5" />
+                  </button>
                 </div>
-                <div className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-black/55 text-[9px] font-sans font-semibold text-white/90 uppercase tracking-wider">
-                  <svg width="8" height="10" viewBox="0 0 10 13" fill="none"><path d="M5 0C2.2 0 0 2.2 0 5C0 8.8 5 13 5 13C5 13 10 8.8 10 5C10 2.2 7.8 0 5 0ZM5 6.8C4 6.8 3.2 6 3.2 5C3.2 4 4 3.2 5 3.2C6 3.2 6.8 4 6.8 5C6.8 6 6 6.8 5 6.8Z" fill="white"/></svg>
-                  <span>MADE IN MADURAI</span>
+
+                <div className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-black/40 border border-[#E5A93B]/40 text-[9px] font-sans font-bold text-[#E5A93B] uppercase tracking-wider">
+                  <span className="text-[10px] leading-none">✦</span>
+                  <span>FEATURED SPECIAL</span>
                 </div>
               </div>
 
-              <div className="py-8 flex items-center justify-center relative z-10">
-                <div className="relative w-48 h-48 sm:w-52 sm:h-52 flex items-center justify-center">
-                  <svg className="absolute inset-0 w-full h-full" viewBox="0 0 200 200">
-                    <circle cx="100" cy="100" r="88" fill="none" stroke="white" strokeWidth="1" strokeDasharray="5 5" opacity="0.4" />
-                    <circle cx="100" cy="100" r="70" fill="none" stroke="white" strokeWidth="0.7" opacity="0.2" />
-                  </svg>
-                  <div
-                    className="w-[88px] h-[88px] sm:w-[100px] sm:h-[100px] rounded-full flex items-center justify-center"
-                    style={{
-                      background: 'linear-gradient(145deg, rgba(255,255,255,0.12) 0%, rgba(0,0,0,0.15) 100%)',
-                      border: '1.5px solid rgba(255,255,255,0.45)',
-                      backdropFilter: 'blur(4px)',
-                    }}
-                  >
-                    <span className="font-display italic font-medium text-[34px] sm:text-[40px] text-white/85 tracking-wider">
-                      AM
-                    </span>
+              {/* High-Resolution Product Image */}
+              <div className="py-3 flex flex-col items-center justify-center relative z-10">
+                <div className="relative w-44 h-44 sm:w-48 sm:h-48 rounded-2xl border-2 border-[#E5A93B]/60 p-1.5 bg-[#2C1810]/50 shadow-inner group overflow-hidden">
+                  {featuredItem.imageUrl ? (
+                    <img
+                      src={featuredItem.imageUrl}
+                      alt={featuredItem.name}
+                      className="w-full h-full object-cover rounded-xl transition-transform duration-500 group-hover:scale-105"
+                    />
+                  ) : (
+                    <div className="w-full h-full rounded-xl bg-gradient-to-br from-[#8B1A1A] to-[#4A0A0F] flex items-center justify-center text-[#E5A93B]">
+                      <span className="font-display italic font-bold text-3xl">AM</span>
+                    </div>
+                  )}
+
+                  {/* Category Tag Overlay */}
+                  <div className="absolute top-3 right-3 bg-[#2C1810]/90 text-[#E5A93B] font-mono text-[9px] font-bold px-2 py-0.5 rounded-full border border-[#D4AF37]/40 uppercase shadow-md">
+                    {'category' in featuredItem && featuredItem.category ? (featuredItem.category as string) : 'Special'}
                   </div>
                 </div>
               </div>
 
-              <div className="flex items-end justify-between gap-3 relative z-10 mt-auto">
-                <div className="flex flex-col">
-                  <span className="font-display font-medium text-[17px] sm:text-[19px] text-white leading-snug">
-                    {featuredItem.name}
-                  </span>
-                  <span className="font-sans font-bold text-[15px] sm:text-[17px] text-white mt-0.5">
-                    ₹ {featuredItem.price}
+              {/* Product Info & Quantity Stepper Bar */}
+              <div className="flex flex-col gap-3 relative z-10 mt-auto pt-2 border-t border-white/15">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex flex-col min-w-0">
+                    <span className="font-display font-bold text-base sm:text-lg text-white leading-snug truncate">
+                      {featuredItem.name}
+                    </span>
+                    <span className="font-sans text-[11px] text-white/70 truncate">
+                      {featuredItem.meta || 'Authentic Madurai Delicacy'}
+                    </span>
+                  </div>
+
+                  <span className="font-mono font-bold text-lg text-[#E5A93B] shrink-0">
+                    ₹{featuredItem.price}
                   </span>
                 </div>
-                <button
-                  type="button"
-                  onClick={handleAddFeatured}
-                  className={`flex items-center gap-1.5 px-4 py-1.5 rounded-full font-sans font-bold text-[11px] sm:text-xs transition-all duration-200 shadow-md cursor-pointer shrink-0 ${
-                    isAdded
-                      ? 'bg-emerald-600 text-white scale-105'
-                      : 'bg-[#F0A020] hover:bg-[#FFB73B] text-[#2C1810] hover:scale-105 active:scale-95'
-                  }`}
-                >
-                  {isAdded ? (
-                    <>
-                      <Check className="w-3.5 h-3.5 stroke-[2.5]" />
-                      <span>ADDED</span>
-                    </>
+
+                {/* Stepper Controls: Add any quantity n directly from Hero */}
+                <div className="flex items-center justify-between gap-3">
+                  {itemQty > 0 ? (
+                    <div className="flex items-center justify-between w-full bg-[#2C1810] border border-[#E5A93B]/50 rounded-xl p-1 shadow-inner">
+                      <button
+                        type="button"
+                        onClick={() => removeFromCart(featuredItem.id)}
+                        className="w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20 text-white flex items-center justify-center transition-colors cursor-pointer"
+                        title="Decrease quantity"
+                      >
+                        <Minus className="w-3.5 h-3.5 stroke-[2.5]" />
+                      </button>
+
+                      <div className="flex items-center gap-1 font-mono font-bold text-sm text-[#E5A93B]">
+                        <span>{itemQty} in Cart</span>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => addToCart(featuredItem.id)}
+                        className="w-8 h-8 rounded-lg bg-[#E5A93B] hover:bg-[#C8860A] text-[#2C1810] flex items-center justify-center transition-colors cursor-pointer font-bold"
+                        title="Increase quantity"
+                      >
+                        <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
+                      </button>
+                    </div>
                   ) : (
-                    <>
-                      <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
-                      <span>ADD{itemQty > 0 ? ` (${itemQty})` : ''}</span>
-                    </>
+                    <button
+                      type="button"
+                      onClick={handleAddFeatured}
+                      className={`
+                        w-full py-2.5 px-4 rounded-xl font-sans font-bold text-xs transition-all duration-200 shadow-md cursor-pointer
+                        flex items-center justify-center gap-2 border border-white/20
+                        ${
+                          isAdded
+                            ? 'bg-emerald-600 text-white scale-102'
+                            : 'bg-[#E5A93B] hover:bg-[#C8860A] text-[#2C1810] hover:scale-[1.02] active:scale-95'
+                        }
+                      `}
+                    >
+                      {isAdded ? (
+                        <>
+                          <Check className="w-4 h-4 stroke-[2.5]" />
+                          <span>ADDED TO CART!</span>
+                        </>
+                      ) : (
+                        <>
+                          <Plus className="w-4 h-4 stroke-[2.5]" />
+                          <span>ADD TO CART (₹{featuredItem.price})</span>
+                        </>
+                      )}
+                    </button>
                   )}
-                </button>
+                </div>
               </div>
             </div>
           </div>
@@ -451,32 +514,7 @@ export const Hero: FC<HeroProps> = ({
         </div>
       </Container>
 
-      {/* ═══ VENDOR MODAL ═══ */}
-      {showVendorModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm">
-          <div className="bg-[#FAF7F2] text-[#2C1810] rounded-2xl max-w-md w-full p-6 shadow-2xl relative">
-            <button type="button" onClick={() => setShowVendorModal(false)} className="absolute top-4 right-4 p-1.5 rounded-full hover:bg-black/10 transition-colors cursor-pointer">
-              <X className="w-5 h-5" />
-            </button>
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-12 h-12 rounded-full bg-[#E5A93B]/20 flex items-center justify-center text-[#C8860A]"><Store className="w-6 h-6" /></div>
-              <div>
-                <h3 className="font-display font-bold text-xl">Karigar & Vendor Portal</h3>
-                <p className="text-xs text-black/60">Madurai Artisans & Craft Network</p>
-              </div>
-            </div>
-            <p className="text-sm text-black/75 leading-relaxed mb-4">Partner with AM Madurai for verified local deliveries. Zero listing fees, same-day fleet, next-day settlement.</p>
-            <div className="bg-[#F5EEE1] rounded-xl p-3.5 mb-5 flex flex-col gap-2 text-xs">
-              {['Zero listing fees for verified local karigars','Guaranteed same-day hyperlocal delivery fleet','Next-day direct bank settlement'].map(t => (
-                <div key={t} className="flex items-center gap-2 text-emerald-800 font-semibold"><Check className="w-4 h-4 text-emerald-600 shrink-0" /><span>{t}</span></div>
-              ))}
-            </div>
-            <button type="button" onClick={() => { setShowVendorModal(false); onNavigateToAdmin?.(); }} className="w-full py-3 rounded-xl bg-[#8B1A1A] hover:bg-[#6B0F14] text-white font-sans font-bold text-sm transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer">
-              <span>Access Partner Console</span><ChevronRight className="w-4 h-4" />
-            </button>
-          </div>
-        </div>
-      )}
+
 
       {/* ═══ OUR STORY MODAL ═══ */}
       {showStoryModal && (

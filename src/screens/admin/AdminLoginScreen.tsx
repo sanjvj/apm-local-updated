@@ -1,13 +1,17 @@
 import type { FC, FormEvent } from 'react';
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Navigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { BrandLogo, Container } from '../../components';
 import { Lock, Mail, Eye, EyeOff, AlertCircle, ArrowLeft, ShieldCheck } from 'lucide-react';
 
 export const AdminLoginScreen: FC = () => {
   const navigate = useNavigate();
-  const { adminLogin } = useAuth();
+  const { adminLogin, isAdminAuthenticated } = useAuth();
+
+  if (isAdminAuthenticated) {
+    return <Navigate to="/admin" replace />;
+  }
 
   const [email, setEmail] = useState<string>('');
   const [password, setPassword] = useState<string>('');

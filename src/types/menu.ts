@@ -1,4 +1,4 @@
-export type CategoryId = 'all' | 'sweets' | 'savouries' | 'karupatti' | 'gift-boxes' | 'ghewar' | 'snacks' | 'gift';
+export type CategoryId = 'all' | 'sweets' | 'beverages' | 'snacks' | 'ghewar' | 'karupatti' | 'gift-boxes' | 'gift';
 
 export interface Category {
   id: CategoryId;

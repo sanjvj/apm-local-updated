@@ -65,6 +65,8 @@ export interface OrderContextType {
   ) => void;
   approveClusterRequest: (requestId: string) => void;
   rejectClusterRequest: (requestId: string) => void;
+  addOrderComplaint: (orderId: string, complaint: { category: string; description: string; imageUrl: string }) => void;
+  addOrderFeedback: (orderId: string, feedback: { rating: number; comment: string }) => void;
 }
 
 const OrderContext = createContext<OrderContextType | undefined>(undefined);
@@ -112,10 +114,42 @@ export const OrderProvider: FC<{ children: ReactNode }> = ({ children }) => {
     }
   });
 
-  // Sync Orders to localStorage
+  // Broadcast Real-Time Cross-Tab Sync Event
+  const notifyCrossTabSync = () => {
+    try {
+      window.dispatchEvent(new CustomEvent('apm_sync_event'));
+      localStorage.setItem('apm_last_sync_timestamp', Date.now().toString());
+    } catch {}
+  };
+
+  // Real-Time Cross-Tab Sync Listener (Syncs Admin, Rider, & Customer views instant on changes without F5)
+  useEffect(() => {
+    const handleSync = () => {
+      try {
+        const savedOrders = localStorage.getItem(STORAGE_KEYS.ALL_ORDERS);
+        if (savedOrders) setAllOrders(JSON.parse(savedOrders));
+
+        const savedPartners = localStorage.getItem(STORAGE_KEYS.PARTNERS);
+        if (savedPartners) setDeliveryPartners(JSON.parse(savedPartners));
+
+        const savedRequests = localStorage.getItem(STORAGE_KEYS.CLUSTER_REQUESTS);
+        if (savedRequests) setClusterRequests(JSON.parse(savedRequests));
+      } catch {}
+    };
+
+    window.addEventListener('storage', handleSync);
+    window.addEventListener('apm_sync_event', handleSync);
+    return () => {
+      window.removeEventListener('storage', handleSync);
+      window.removeEventListener('apm_sync_event', handleSync);
+    };
+  }, []);
+
+  // Sync Orders to localStorage & trigger real-time broadcast
   useEffect(() => {
     try {
       localStorage.setItem(STORAGE_KEYS.ALL_ORDERS, JSON.stringify(allOrders));
+      notifyCrossTabSync();
     } catch (e) {
       console.warn('Failed to save orders to localStorage:', e);
     }
@@ -125,6 +159,7 @@ export const OrderProvider: FC<{ children: ReactNode }> = ({ children }) => {
   useEffect(() => {
     try {
       localStorage.setItem(STORAGE_KEYS.PARTNERS, JSON.stringify(deliveryPartners));
+      notifyCrossTabSync();
     } catch (e) {
       console.warn('Failed to save partners to localStorage:', e);
     }
@@ -134,6 +169,7 @@ export const OrderProvider: FC<{ children: ReactNode }> = ({ children }) => {
   useEffect(() => {
     try {
       localStorage.setItem(STORAGE_KEYS.CLUSTER_REQUESTS, JSON.stringify(clusterRequests));
+      notifyCrossTabSync();
     } catch (e) {
       console.warn('Failed to save cluster requests to localStorage:', e);
     }
@@ -172,6 +208,28 @@ export const OrderProvider: FC<{ children: ReactNode }> = ({ children }) => {
       status: initialStatus,
       timeline: order.timeline || buildUpdatedTimeline([], initialStatus),
     };
+
+    // Automatically group order into zone cluster based on address pincode
+    const pin = order.address?.pincode;
+    let autoZoneId = 'area-central';
+    if (pin) {
+      const pinMap: Record<string, string> = {
+        '625001': 'area-central', '625004': 'area-central', '625005': 'area-central', '625016': 'area-central',
+        '625002': 'area-north', '625018': 'area-north', '625021': 'area-north', '625104': 'area-north',
+        '625015': 'area-south', '625022': 'area-south', '625023': 'area-south',
+        '625009': 'area-east', '625012': 'area-east', '625014': 'area-east', '625107': 'area-east',
+        '625003': 'area-west', '625006': 'area-west', '625007': 'area-west', '625008': 'area-west',
+        '625010': 'area-west', '625011': 'area-west', '625017': 'area-west', '625019': 'area-west',
+        '625020': 'area-west', '625531': 'area-west',
+      };
+      if (pinMap[pin]) autoZoneId = pinMap[pin];
+    }
+
+    try {
+      const currentAreaMap = JSON.parse(localStorage.getItem(STORAGE_KEYS.ORDER_AREAS) || '{}');
+      currentAreaMap[order.orderId] = autoZoneId;
+      localStorage.setItem(STORAGE_KEYS.ORDER_AREAS, JSON.stringify(currentAreaMap));
+    } catch {}
 
     setAllOrders((prev) => [orderWithTimeline, ...prev.filter((o) => o.orderId !== order.orderId)]);
   };
@@ -363,6 +421,48 @@ export const OrderProvider: FC<{ children: ReactNode }> = ({ children }) => {
     setClusterRequests((prev) => prev.filter((r) => r.id !== requestId));
   };
 
+  // Add Complaint to Order
+  const addOrderComplaint = (
+    orderId: string,
+    complaintData: { category: string; description: string; imageUrl: string }
+  ) => {
+    setAllOrders((prev) =>
+      prev.map((order) => {
+        if (order.orderId !== orderId) return order;
+        return {
+          ...order,
+          complaint: {
+            category: complaintData.category,
+            description: complaintData.description,
+            imageUrl: complaintData.imageUrl,
+            createdAt: new Date().toISOString(),
+            status: 'open',
+          },
+        };
+      })
+    );
+  };
+
+  // Add Feedback/Review to Order
+  const addOrderFeedback = (
+    orderId: string,
+    feedbackData: { rating: number; comment: string }
+  ) => {
+    setAllOrders((prev) =>
+      prev.map((order) => {
+        if (order.orderId !== orderId) return order;
+        return {
+          ...order,
+          feedback: {
+            rating: feedbackData.rating,
+            comment: feedbackData.comment,
+            createdAt: new Date().toISOString(),
+          },
+        };
+      })
+    );
+  };
+
   return (
     <OrderContext.Provider
       value={{
@@ -380,6 +480,8 @@ export const OrderProvider: FC<{ children: ReactNode }> = ({ children }) => {
         requestCluster,
         approveClusterRequest,
         rejectClusterRequest,
+        addOrderComplaint,
+        addOrderFeedback,
       }}
     >
       {children}

@@ -1,5 +1,6 @@
-import { useEffect, type FC, type ReactNode } from 'react';
+import { useEffect, useState, type FC, type ReactNode } from 'react';
 import { BrowserRouter, Routes, Route, useNavigate, useLocation, Navigate } from 'react-router-dom';
+import { PincodeCheckModal } from './components';
 import { CartProvider, useCart } from './context/CartContext';
 import { OrderProvider } from './context/OrderContext';
 import { MenuProvider } from './context/MenuContext';
@@ -12,6 +13,7 @@ import { AddressScreen } from './screens/AddressScreen';
 import { PaymentScreen } from './screens/PaymentScreen';
 import { ConfirmationScreen } from './screens/ConfirmationScreen';
 import { TrackOrderScreen } from './screens/TrackOrderScreen';
+import { YourOrdersScreen } from './screens/YourOrdersScreen';
 import { AdminDashboardScreen } from './screens/admin/AdminDashboardScreen';
 import { AdminLoginScreen } from './screens/admin/AdminLoginScreen';
 import { DeliveryPortalScreen } from './screens/delivery/DeliveryPortalScreen';
@@ -40,11 +42,36 @@ const AdminAuthGuard: FC<{ children: ReactNode }> = ({ children }) => {
 
 function AppRoutes() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { totalItems, selectedSlotId, selectedAddress } = useCart();
+  const [showPincodeModal, setShowPincodeModal] = useState<boolean>(false);
+
+  // Check if pincode verified on initial landing
+  useEffect(() => {
+    const isCustomerPage = location.pathname === '/' || location.pathname === '/menu';
+    const savedPin = localStorage.getItem('apm_user_pincode');
+    if (isCustomerPage && !savedPin) {
+      setShowPincodeModal(true);
+    }
+  }, [location.pathname]);
+
+  // Listen to manual pincode trigger events from Header
+  useEffect(() => {
+    const handleOpenModal = () => setShowPincodeModal(true);
+    window.addEventListener('apm_open_pincode_modal', handleOpenModal);
+    return () => window.removeEventListener('apm_open_pincode_modal', handleOpenModal);
+  }, []);
 
   return (
     <>
       <ScrollToTop />
+      {showPincodeModal && (
+        <PincodeCheckModal
+          canCloseWithoutSelect={Boolean(localStorage.getItem('apm_user_pincode'))}
+          onClose={() => setShowPincodeModal(false)}
+          onConfirmPincode={() => setShowPincodeModal(false)}
+        />
+      )}
       <Routes>
         {/* / or /menu -> Customer Menu Screen */}
         <Route
@@ -54,6 +81,7 @@ function AppRoutes() {
               onViewCart={() => navigate('/cart')}
               onNavigateToAdmin={() => navigate('/admin')}
               onNavigateToTrack={() => navigate('/track')}
+              onNavigateToOrders={() => navigate('/orders')}
             />
           }
         />
@@ -64,6 +92,31 @@ function AppRoutes() {
               onViewCart={() => navigate('/cart')}
               onNavigateToAdmin={() => navigate('/admin')}
               onNavigateToTrack={() => navigate('/track')}
+              onNavigateToOrders={() => navigate('/orders')}
+            />
+          }
+        />
+
+        {/* /orders & /your-orders -> Customer Orders Screen */}
+        <Route
+          path="/orders"
+          element={
+            <YourOrdersScreen
+              onBackToMenu={() => navigate('/')}
+              onNavigateToTrack={(orderId) => navigate(orderId ? `/track?orderId=${orderId}` : '/track')}
+              onNavigateToAdmin={() => navigate('/admin')}
+              onNavigateToCart={() => navigate('/cart')}
+            />
+          }
+        />
+        <Route
+          path="/your-orders"
+          element={
+            <YourOrdersScreen
+              onBackToMenu={() => navigate('/')}
+              onNavigateToTrack={(orderId) => navigate(orderId ? `/track?orderId=${orderId}` : '/track')}
+              onNavigateToAdmin={() => navigate('/admin')}
+              onNavigateToCart={() => navigate('/cart')}
             />
           }
         />
@@ -140,6 +193,7 @@ function AppRoutes() {
               onStartNewOrder={() => navigate('/')}
               onRedirectToMenu={() => navigate('/')}
               onNavigateToTrack={(orderId) => navigate(orderId ? `/track?orderId=${orderId}` : '/track')}
+              onNavigateToOrders={() => navigate('/orders')}
             />
           }
         />
@@ -152,6 +206,7 @@ function AppRoutes() {
               onBackToMenu={() => navigate('/')}
               onBackToCart={() => navigate('/cart')}
               onNavigateToAdmin={() => navigate('/admin')}
+              onNavigateToOrders={() => navigate('/orders')}
             />
           }
         />

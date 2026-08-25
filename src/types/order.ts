@@ -8,6 +8,20 @@ export interface OrderItemSnapshot {
   quantity: number;
 }
 
+export interface OrderComplaint {
+  category: string;
+  description: string;
+  imageUrl: string;
+  createdAt: string;
+  status: 'open' | 'under_review' | 'resolved';
+}
+
+export interface OrderFeedback {
+  rating: number;
+  comment: string;
+  createdAt: string;
+}
+
 export interface OrderSnapshot {
   orderId: string;
   items: OrderItemSnapshot[];
@@ -26,4 +40,8 @@ export interface OrderSnapshot {
   adminNotes?: string;
   customerName?: string;
   customerPhone?: string;
+
+  // Customer Feedback & Complaint Fields
+  complaint?: OrderComplaint;
+  feedback?: OrderFeedback;
 }

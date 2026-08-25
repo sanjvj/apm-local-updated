@@ -32,6 +32,8 @@ import {
   MapPin,
   UserCheck,
   Check,
+  Star,
+  AlertCircle,
 } from 'lucide-react';
 
 export interface AdminDashboardScreenProps {
@@ -203,7 +205,6 @@ export const AdminDashboardScreen: FC<AdminDashboardScreenProps> = ({
             { id: 'requests', label: `Rider Requests (${clusterRequests.filter((r) => r.status === 'pending').length}) 🙋‍♂️`, icon: UserCheck },
             { id: 'overview', label: 'Dashboard', icon: LayoutDashboard },
             { id: 'orders', label: `Orders (${activeOrdersCount} active)`, icon: ShoppingBag },
-            { id: 'riders', label: `Delivery Boys (${deliveryPartners.length})`, icon: Truck },
             { id: 'slots', label: `Delivery Slots (${slots.length})`, icon: Clock },
             { id: 'stock', label: `Menu Items (${menuItems.length})`, icon: Package },
           ].map((tab) => {
@@ -543,9 +544,21 @@ export const AdminDashboardScreen: FC<AdminDashboardScreenProps> = ({
                         </td>
                         <td className="py-3.5 px-4 font-mono text-gray-700">{o.slot?.timeWindow}</td>
                         <td className="py-3.5 px-4">
-                          <span className="px-2.5 py-1 rounded-full text-[10px] font-mono font-bold uppercase tracking-wider bg-amber-100 text-amber-900 border border-amber-300">
-                            {o.status.replace(/_/g, ' ')}
-                          </span>
+                          <div className="flex flex-col gap-1">
+                            <span className="px-2.5 py-1 rounded-full text-[10px] font-mono font-bold uppercase tracking-wider bg-amber-100 text-amber-900 border border-amber-300 w-fit">
+                              {o.status.replace(/_/g, ' ')}
+                            </span>
+                            {o.complaint && (
+                              <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-rose-600 text-white flex items-center gap-1 w-fit animate-pulse">
+                                ⚠️ Complaint ({o.complaint.category})
+                              </span>
+                            )}
+                            {o.feedback && (
+                              <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-amber-100 text-amber-900 border border-amber-300 w-fit">
+                                ⭐ {o.feedback.rating}★ Review
+                              </span>
+                            )}
+                          </div>
                         </td>
                         <td className="py-3.5 px-4">
                           {o.assignedPartner ? (
@@ -826,10 +839,10 @@ export const AdminDashboardScreen: FC<AdminDashboardScreenProps> = ({
                 <Filter className="w-4 h-4 text-gray-400 shrink-0" />
                 {[
                   { id: 'all', label: 'All Items' },
+                  { id: 'ghewar', label: 'Ghewar' },
                   { id: 'sweets', label: 'Sweets' },
-                  { id: 'savouries', label: 'Savouries' },
-                  { id: 'karupatti', label: 'Karupatti Special' },
-                  { id: 'gift-boxes', label: 'Gift Boxes' },
+                  { id: 'beverages', label: 'Beverages' },
+                  { id: 'snacks', label: 'Snacks' },
                 ].map((c) => (
                   <button
                     key={c.id}
@@ -974,6 +987,54 @@ export const AdminDashboardScreen: FC<AdminDashboardScreenProps> = ({
                 </div>
               ))}
             </div>
+
+            {/* Customer Complaint Display with Mandatory Photo Proof */}
+            {selectedOrder.complaint && (
+              <div className="bg-rose-50 border-2 border-rose-300 rounded-xl p-4 flex flex-col gap-2.5">
+                <div className="flex items-center justify-between">
+                  <span className="font-sans font-bold text-xs text-rose-900 flex items-center gap-1.5">
+                    <AlertCircle className="w-4 h-4 text-rose-600 shrink-0" />
+                    <span>CUSTOMER COMPLAINT FILED ({selectedOrder.complaint.category})</span>
+                  </span>
+                  <span className="font-mono text-[10px] text-rose-800 font-bold bg-rose-200 px-2 py-0.5 rounded-full uppercase">
+                    {selectedOrder.complaint.status}
+                  </span>
+                </div>
+                <p className="text-xs font-sans text-rose-950 bg-white p-2.5 rounded-lg border border-rose-200">
+                  "{selectedOrder.complaint.description}"
+                </p>
+
+                {selectedOrder.complaint.imageUrl && (
+                  <div className="flex flex-col gap-1 mt-1">
+                    <span className="font-mono text-[10px] font-bold text-rose-800 uppercase">Uploaded Photo Proof:</span>
+                    <div className="relative w-full h-44 rounded-xl overflow-hidden border border-rose-300 bg-black/5">
+                      <img
+                        src={selectedOrder.complaint.imageUrl}
+                        alt="Customer Complaint Proof"
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Customer Rating & Review Display */}
+            {selectedOrder.feedback && (
+              <div className="bg-amber-50 border border-amber-300 rounded-xl p-3 flex flex-col gap-1.5 text-xs font-sans text-amber-950">
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-amber-900 flex items-center gap-1">
+                    <Star className="w-4 h-4 text-amber-500 fill-amber-500" />
+                    <span>Customer Rating: {selectedOrder.feedback.rating} / 5 Stars</span>
+                  </span>
+                </div>
+                {selectedOrder.feedback.comment && (
+                  <p className="italic text-amber-900 bg-white/70 p-2 rounded-lg border border-amber-200">
+                    "{selectedOrder.feedback.comment}"
+                  </p>
+                )}
+              </div>
+            )}
 
             {/* Editable Status Controls */}
             <div className="flex flex-col gap-1 border-t border-gray-200 pt-3">

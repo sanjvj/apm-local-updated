@@ -27,3 +27,4 @@ export * from './RiderModal';
 export * from './PolicyModal';
 export * from './LocationPickerMap';
 export * from './RiderAuthModal';
+export * from './PincodeCheckModal';

@@ -8,6 +8,7 @@ export interface HeaderProps {
   onNavigateToMenu?: () => void;
   onNavigateToCart?: () => void;
   onNavigateToTrack?: () => void;
+  onNavigateToOrders?: () => void;
   onNavigateToAdmin?: () => void;
 }
 
@@ -15,6 +16,7 @@ export const Header: FC<HeaderProps> = ({
   onNavigateToMenu,
   onNavigateToCart,
   onNavigateToTrack,
+  onNavigateToOrders,
   onNavigateToAdmin,
 }) => {
   const { totalItems } = useCart();
@@ -32,8 +34,40 @@ export const Header: FC<HeaderProps> = ({
           <BrandLogo variant="full" badgeSize="sm" />
         </button>
 
-        {/* Right Side Actions: Track Order, Admin Mode Toggle & Cart Icon */}
+        {/* Right Side Actions: Pincode Check, Your Orders, Track Order, Admin & Cart */}
         <div className="flex items-center gap-2 sm:gap-3">
+          {/* Pincode Location Check Badge */}
+          <button
+            type="button"
+            onClick={() => {
+              window.dispatchEvent(new CustomEvent('apm_open_pincode_modal'));
+            }}
+            className="
+              flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-amber-50 border border-amber-300
+              text-xs font-sans font-semibold text-amber-900 hover:bg-amber-100 transition-all cursor-pointer shadow-2xs
+            "
+            title="Check Delivery Availability by Pincode"
+          >
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+            <span className="font-mono font-bold text-[11px]">Check Pincode</span>
+          </button>
+
+          {/* Your Orders Button */}
+          {onNavigateToOrders && (
+            <button
+              type="button"
+              onClick={onNavigateToOrders}
+              className="
+                flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#8B1A1A]/10 border border-[#8B1A1A]/30
+                text-xs font-sans font-semibold text-[#8B1A1A] hover:bg-[#8B1A1A] hover:text-white transition-all cursor-pointer
+              "
+              title="Your Orders"
+            >
+              <ShoppingBag className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Your Orders</span>
+            </button>
+          )}
+
           {/* Track Order Button */}
           {onNavigateToTrack && (
             <button

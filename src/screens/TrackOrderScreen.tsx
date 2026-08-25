@@ -10,12 +10,14 @@ export interface TrackOrderScreenProps {
   onBackToMenu: () => void;
   onBackToCart: () => void;
   onNavigateToAdmin?: () => void;
+  onNavigateToOrders?: () => void;
 }
 
 export const TrackOrderScreen: FC<TrackOrderScreenProps> = ({
   onBackToMenu,
   onBackToCart,
   onNavigateToAdmin,
+  onNavigateToOrders,
 }) => {
   const { allOrders, getOrderById } = useOrders();
   const { lastOrder } = useCart();
@@ -111,6 +113,7 @@ export const TrackOrderScreen: FC<TrackOrderScreenProps> = ({
           onNavigateToMenu={onBackToMenu}
           onNavigateToCart={onBackToCart}
           onNavigateToAdmin={onNavigateToAdmin}
+          onNavigateToOrders={onNavigateToOrders}
         />
 
         <div className="flex-1 py-8 flex flex-col gap-6">

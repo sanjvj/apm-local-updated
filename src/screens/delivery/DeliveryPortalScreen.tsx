@@ -118,42 +118,57 @@ export const DeliveryPortalScreen: FC<DeliveryPortalScreenProps> = ({ onNavigate
     }
   }, [hasApprovedActiveRide]);
 
-  // Group unassigned pending orders by Cluster ID
-  const availableClustersList = useMemo<AvailableClusterBatch[]>(() => {
+  // Group ALL 5 Madurai Zones & Orders dynamically from Admin Dispatch Board
+  const availableClustersList = useMemo(() => {
+    const defaultAreasList = [
+      { id: 'area-north', name: 'North Madurai', pincodes: ['625002', '625018'] },
+      { id: 'area-south', name: 'South Madurai', pincodes: ['625003'] },
+      { id: 'area-central', name: 'Central Temple Zone', pincodes: ['625001', '625016'] },
+      { id: 'area-east', name: 'East Madurai', pincodes: ['625020', '625017'] },
+      { id: 'area-west', name: 'West Madurai (TVS Nagar)', pincodes: ['625016'] },
+    ];
+
+    let currentAreas = defaultAreasList;
+    try {
+      const savedAreas = localStorage.getItem('apm_local_delivery_area_clusters');
+      if (savedAreas) {
+        const parsed = JSON.parse(savedAreas);
+        if (Array.isArray(parsed) && parsed.length > 0) currentAreas = parsed;
+      }
+    } catch {}
+
     let areaMap: Record<string, string> = DEFAULT_ORDER_CLUSTER_MAP;
     try {
       const savedMap = localStorage.getItem(STORAGE_KEY_ORDER_AREAS);
       if (savedMap) areaMap = { ...DEFAULT_ORDER_CLUSTER_MAP, ...JSON.parse(savedMap) };
     } catch {}
 
-    // Find all unassigned pending orders
-    const unassignedOrders = allOrders.filter((o) => {
-      const isClaimed = Boolean(claimedClustersMap[o.orderId]) || Boolean(o.assignedPartner);
-      const isPending = o.status !== 'delivered' && o.status !== 'cancelled';
-      return isPending && !isClaimed;
-    });
+    // Build cluster batches for zones with active orders ONLY
+    return currentAreas
+      .map((area) => {
+        // Find all active orders in this area
+        const zoneOrders = allOrders.filter((o) => {
+          const orderZoneId = areaMap[o.orderId] || DEFAULT_ORDER_CLUSTER_MAP[o.orderId] || 'area-central';
+          const isPending = o.status !== 'delivered' && o.status !== 'cancelled';
+          return isPending && orderZoneId === area.id;
+        });
 
-    // Group by cluster ID
-    const clusterGroupMap: Record<string, OrderSnapshot[]> = {};
-    unassignedOrders.forEach((o) => {
-      const clusterId = areaMap[o.orderId] || DEFAULT_ORDER_CLUSTER_MAP[o.orderId] || 'area-central';
-      if (!clusterGroupMap[clusterId]) clusterGroupMap[clusterId] = [];
-      clusterGroupMap[clusterId].push(o);
-    });
+        const routeSummary = optimizeDeliveryRoute(zoneOrders, STORE_HUB_LOCATION);
+        const firstAssigned = zoneOrders.find((o) => o.assignedPartner)?.assignedPartner;
 
-    // Format available cluster batches
-    return Object.entries(clusterGroupMap).map(([clusterId, orders]) => {
-      const routeSummary = optimizeDeliveryRoute(orders, STORE_HUB_LOCATION);
-      return {
-        id: clusterId,
-        orderIds: orders.map((o) => o.orderId),
-        orders,
-        ordersCount: orders.length,
-        payoutAmount: orders.length * 50,
-        totalDistanceKm: routeSummary.totalDistanceKm,
-        totalTimeMin: routeSummary.totalTimeMin,
-      };
-    });
+        return {
+          id: area.id,
+          name: area.name,
+          orderIds: zoneOrders.map((o) => o.orderId),
+          orders: zoneOrders,
+          ordersCount: zoneOrders.length,
+          payoutAmount: zoneOrders.length * 50,
+          totalDistanceKm: routeSummary.totalDistanceKm,
+          totalTimeMin: routeSummary.totalTimeMin,
+          assignedPartner: firstAssigned,
+        };
+      })
+      .filter((cluster) => cluster.ordersCount > 0);
   }, [allOrders, claimedClustersMap]);
 
   // SMART ROUTE SEQUENCER for My Approved Claimed Orders starting from Kitchen Hub
@@ -396,26 +411,45 @@ export const DeliveryPortalScreen: FC<DeliveryPortalScreenProps> = ({ onNavigate
                         {/* Payout Banner Header */}
                         <div className="bg-gradient-to-r from-[#8B1A1A] to-[#6B0F14] text-white p-4 rounded-2xl flex flex-col gap-2 shadow-sm">
                           <div className="flex items-center justify-between gap-2">
-                            <span className="font-mono text-[10px] text-[var(--gold)] font-bold uppercase tracking-wider">
-                              GUARANTEED GIG PAYOUT
-                            </span>
+                            <div className="flex items-center gap-1.5 text-[var(--gold)] font-display font-bold text-base truncate">
+                              <MapPin className="w-4 h-4 shrink-0" />
+                              <span className="truncate">{cluster.name}</span>
+                            </div>
                             {applicantCount > 0 && (
-                              <span className="font-mono text-[10px] bg-amber-400 text-gray-900 font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
+                              <span className="font-mono text-[10px] bg-amber-400 text-gray-900 font-bold px-2 py-0.5 rounded-full flex items-center gap-1 shrink-0">
                                 <Users className="w-3 h-3" />
                                 <span>{applicantCount} Requested</span>
                               </span>
                             )}
                           </div>
 
-                          <div className="flex items-center justify-between gap-2">
+                          <div className="flex items-center justify-between gap-2 pt-1 border-t border-white/10">
                             <h3 className="font-display font-bold text-2xl text-white">
                               ₹{cluster.payoutAmount} Payout
                             </h3>
-                            <span className="font-mono text-xs bg-white/20 text-white px-2.5 py-1 rounded-lg border border-white/20 font-bold">
-                              {cluster.ordersCount} Orders
-                            </span>
+                            <div className="flex flex-col items-end">
+                              <span className="font-mono text-xs bg-white/20 text-white px-2.5 py-0.5 rounded-lg border border-white/20 font-bold">
+                                {cluster.ordersCount} Orders
+                              </span>
+                              <span className="text-[10px] font-mono text-[var(--gold)] font-semibold mt-0.5">
+                                ₹{cluster.orders.reduce((sum, o) => sum + o.total, 0)} Rev
+                              </span>
+                            </div>
                           </div>
                         </div>
+
+                        {/* Order List Snippet */}
+                        {cluster.orders.length > 0 && (
+                          <div className="bg-gray-50 p-2.5 rounded-xl border border-gray-200 flex flex-col gap-1 text-xs">
+                            <span className="font-bold text-[#8B1A1A]">Zone Orders:</span>
+                            {cluster.orders.map((o) => (
+                              <div key={o.orderId} className="flex items-center justify-between text-[11px] font-mono">
+                                <span className="font-bold text-gray-900">{o.orderId} • {o.customerName}</span>
+                                <span className="text-gray-600">₹{o.total}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
 
                         {/* Route Metrics Grid */}
                         <div className="grid grid-cols-3 gap-2 bg-gray-50 p-3.5 rounded-2xl border border-gray-200">
@@ -444,8 +478,18 @@ export const DeliveryPortalScreen: FC<DeliveryPortalScreenProps> = ({ onNavigate
                           </div>
                         </div>
 
-                        {/* Request Cluster Button */}
-                        {hasRequested ? (
+                        {/* Assignment & Request Status Button */}
+                        {cluster.assignedPartner?.id === activeGigRider.id ? (
+                          <div className="w-full py-3 rounded-xl bg-emerald-700 text-white font-sans font-bold text-xs shadow-sm flex items-center justify-center gap-2 border border-emerald-500">
+                            <Check className="w-4 h-4 text-emerald-300" />
+                            <span>Assigned to You (Check My Active Route)</span>
+                          </div>
+                        ) : cluster.assignedPartner ? (
+                          <div className="w-full py-3 rounded-xl bg-gray-100 text-gray-700 font-sans font-semibold text-xs flex items-center justify-center gap-2 border border-gray-300">
+                            <Truck className="w-4 h-4 text-gray-500" />
+                            <span>Assigned to {cluster.assignedPartner.name}</span>
+                          </div>
+                        ) : hasRequested ? (
                           <div className="w-full py-3.5 rounded-xl bg-amber-400 text-gray-900 font-sans font-bold text-xs shadow-sm flex items-center justify-center gap-2 border border-amber-300">
                             <Hourglass className="w-4 h-4 animate-spin text-gray-900" />
                             <span>Request Pending Admin Approval ⏳</span>
@@ -453,7 +497,7 @@ export const DeliveryPortalScreen: FC<DeliveryPortalScreenProps> = ({ onNavigate
                         ) : (
                           <button
                             type="button"
-                            onClick={() => handleRequestCluster(cluster)}
+                            onClick={() => handleRequestCluster(cluster as any)}
                             className="w-full py-3.5 rounded-xl bg-[var(--gold)] hover:bg-amber-400 text-[var(--mahogany)] font-sans font-bold text-sm shadow-md transition-all cursor-pointer flex items-center justify-center gap-2 active:scale-95 text-center border border-white/30"
                           >
                             <span>Request Cluster Batch (₹{cluster.payoutAmount}) 🚀</span>

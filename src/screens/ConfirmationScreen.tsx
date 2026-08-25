@@ -9,12 +9,14 @@ export interface ConfirmationScreenProps {
   onStartNewOrder: () => void;
   onRedirectToMenu: () => void;
   onNavigateToTrack?: (orderId: string) => void;
+  onNavigateToOrders?: () => void;
 }
 
 export const ConfirmationScreen: FC<ConfirmationScreenProps> = ({
   onStartNewOrder,
   onRedirectToMenu,
   onNavigateToTrack,
+  onNavigateToOrders,
 }) => {
   const { lastOrder, setLastOrder, clearCart } = useCart();
 
@@ -158,6 +160,22 @@ export const ConfirmationScreen: FC<ConfirmationScreenProps> = ({
           <MessageCircle className="w-4 h-4 text-emerald-600 fill-emerald-100" />
           <span>Get updates on WhatsApp</span>
         </a>
+
+        {/* View All Your Orders CTA */}
+        {onNavigateToOrders && (
+          <button
+            type="button"
+            onClick={onNavigateToOrders}
+            className="
+              w-full py-3 px-4 rounded-xl border border-[#8B1A1A]/30 bg-[#F5EEE1] text-[#8B1A1A]
+              hover:bg-[#E5A93B]/20 font-sans font-bold text-xs sm:text-sm
+              transition-all duration-150 shadow-2xs flex items-center justify-center gap-2 cursor-pointer
+            "
+          >
+            <ShoppingBag className="w-4 h-4" />
+            <span>View All Your Orders</span>
+          </button>
+        )}
 
         {/* 8. Start New Order Primary CTA */}
         <button

@@ -20,12 +20,14 @@ export interface MenuScreenProps {
   onViewCart: () => void;
   onNavigateToAdmin?: () => void;
   onNavigateToTrack?: () => void;
+  onNavigateToOrders?: () => void;
 }
 
 export const MenuScreen: FC<MenuScreenProps> = ({
   onViewCart,
   onNavigateToAdmin,
   onNavigateToTrack,
+  onNavigateToOrders,
 }) => {
   const { menuItems } = useMenu();
   const [activeCategory, setActiveCategory] = useState<CategoryId>('all');
@@ -62,6 +64,7 @@ export const MenuScreen: FC<MenuScreenProps> = ({
           spotlightItem={spotlightItem}
           onNavigateToAdmin={onNavigateToAdmin}
           onNavigateToTrack={onNavigateToTrack}
+          onNavigateToOrders={onNavigateToOrders}
         />
       )}
 

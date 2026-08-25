@@ -2,20 +2,21 @@ import type { FC } from 'react';
 import { useState, useEffect } from 'react';
 import type { OrderSnapshot } from '../types/order';
 import type { DeliveryPartner } from '../types/delivery';
-import { DEFAULT_ORDER_CLUSTER_MAP } from '../context/OrderContext';
+import { DEFAULT_ORDER_CLUSTER_MAP, useOrders } from '../context/OrderContext';
 import {
   MapPin,
   Truck,
   Plus,
   Trash2,
   GripVertical,
-  UserCheck,
   CheckCircle2,
   Search,
   Package,
   Clock,
   X,
   Phone,
+  Check,
+  Hourglass,
 } from 'lucide-react';
 
 export interface AreaCluster {
@@ -47,12 +48,14 @@ export interface DispatchBoardProps {
 
 export const DispatchBoard: FC<DispatchBoardProps> = ({
   orders,
-  riders,
+  riders: _riders,
   onAssignPartnerToOrder,
   onUpdateOrderStatus,
-  onToggleRiderStatus,
+  onToggleRiderStatus: _onToggleRiderStatus,
   onNavigateToTrackOrder,
 }) => {
+  const { clusterRequests = [], approveClusterRequest } = useOrders();
+
   // Load or initialize Area Clusters (Unlimited clusters, 5 per row)
   const [areas, setAreas] = useState<AreaCluster[]>(() => {
     try {
@@ -94,7 +97,6 @@ export const DispatchBoard: FC<DispatchBoardProps> = ({
   const [newAreaName, setNewAreaName] = useState('');
   const [showAddAreaModal, setShowAddAreaModal] = useState(false);
   const [draggedOrderId, setDraggedOrderId] = useState<string | null>(null);
-  const [draggedAreaId, setDraggedAreaId] = useState<string | null>(null);
   const [activeDropZone, setActiveDropZone] = useState<string | null>(null);
 
   // Sync Areas to localStorage
@@ -193,13 +195,10 @@ export const DispatchBoard: FC<DispatchBoardProps> = ({
       prev.map((a) => (a.id === areaId ? { ...a, assignedRiderId: riderId } : a))
     );
 
-    if (riderId) {
-      const ordersInArea = getOrdersInArea(areaId);
-      ordersInArea.forEach((order) => {
-        onAssignPartnerToOrder(order.orderId, riderId);
-      });
-      onToggleRiderStatus(riderId, 'on_delivery');
-    }
+    const ordersInArea = getOrdersInArea(areaId);
+    ordersInArea.forEach((order) => {
+      onAssignPartnerToOrder(order.orderId, riderId || '');
+    });
   };
 
   // HTML5 Drag Handlers
@@ -231,19 +230,6 @@ export const DispatchBoard: FC<DispatchBoardProps> = ({
     setActiveDropZone(null);
     if (draggedOrderId) {
       moveOrderToArea(draggedOrderId, null);
-      setDraggedOrderId(null);
-    }
-  };
-
-  const handleDropOnRider = (e: React.DragEvent, riderId: string) => {
-    e.preventDefault();
-    setActiveDropZone(null);
-
-    if (draggedAreaId) {
-      assignRiderToArea(draggedAreaId, riderId);
-      setDraggedAreaId(null);
-    } else if (draggedOrderId) {
-      onAssignPartnerToOrder(draggedOrderId, riderId);
       setDraggedOrderId(null);
     }
   };
@@ -355,7 +341,8 @@ export const DispatchBoard: FC<DispatchBoardProps> = ({
         <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-3.5 w-full items-start">
           {areas.map((area) => {
             const areaOrders = getOrdersInArea(area.id);
-            const assignedRider = riders.find((r) => r.id === area.assignedRiderId);
+            const assignedRider = areaOrders.find((o) => o.assignedPartner)?.assignedPartner;
+            const pendingReq = clusterRequests.find((r) => r.clusterId === area.id && r.status === 'pending');
             const areaTotal = areaOrders.reduce((sum, o) => sum + o.total, 0);
 
             return (
@@ -391,49 +378,78 @@ export const DispatchBoard: FC<DispatchBoardProps> = ({
                     <span className="font-bold text-[#8B1A1A]">₹{areaTotal}</span>
                   </div>
 
-                  {/* Rider Assignment Dropdown / Drag Badge */}
-                  <div
-                    draggable
-                    onDragStart={(e) => {
-                      setDraggedAreaId(area.id);
-                      e.dataTransfer.setData('text/plain', area.id);
-                    }}
-                    className={`p-2 rounded-xl flex items-center justify-between gap-2 border cursor-grab active:cursor-grabbing transition-all ${
-                      assignedRider
-                        ? 'bg-[#F5EEE1] border-[#D4AF37]/40 text-[#2C1810]'
-                        : 'bg-amber-50/50 border-amber-200 border-dashed text-amber-800'
-                    }`}
-                  >
-                    <div className="flex items-center gap-2 min-w-0">
-                      {assignedRider ? (
-                        <>
-                          <img src={assignedRider.avatar} alt="" className="w-6 h-6 rounded-full object-cover border border-[#D4AF37]" />
-                          <div className="flex flex-col min-w-0 text-left">
-                            <span className="font-bold text-xs truncate leading-none">{assignedRider.name}</span>
-                            <span className="text-[10px] text-emerald-700 font-semibold leading-tight">Assigned Fleet</span>
+                  {/* Rider Status & Details Box: Automatic display of approved rider or pending request */}
+                  {assignedRider ? (
+                    <div className="p-2.5 rounded-xl bg-emerald-50 border border-emerald-300 flex flex-col gap-1 text-emerald-950 shadow-2xs">
+                      <div className="flex items-center justify-between gap-1">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <div className="w-7 h-7 rounded-full bg-[#8B1A1A] text-white font-bold text-xs flex items-center justify-center shrink-0 border border-[#D4AF37]">
+                            {assignedRider.name.charAt(0).toUpperCase()}
                           </div>
-                        </>
-                      ) : (
-                        <div className="flex items-center gap-1 text-xs text-amber-800 font-semibold">
-                          <UserCheck className="w-3.5 h-3.5" />
-                          <span>Rider:</span>
+                          <div className="flex flex-col min-w-0 text-left">
+                            <span className="font-bold text-xs truncate leading-none text-gray-900">
+                              {assignedRider.name}
+                            </span>
+                            {assignedRider.phone && (
+                              <a
+                                href={`tel:${assignedRider.phone}`}
+                                className="text-[10px] text-[#8B1A1A] hover:underline font-mono font-semibold flex items-center gap-0.5 mt-0.5"
+                              >
+                                <Phone className="w-2.5 h-2.5 text-emerald-600" />
+                                <span>{assignedRider.phone}</span>
+                              </a>
+                            )}
+                          </div>
                         </div>
-                      )}
-                    </div>
 
-                    <select
-                      value={area.assignedRiderId || ''}
-                      onChange={(e) => assignRiderToArea(area.id, e.target.value || null)}
-                      className="text-[11px] font-sans font-bold py-1 px-1.5 rounded-lg bg-white border border-[#EACFA5] text-[#2C1810] focus:outline-none cursor-pointer max-w-[130px]"
-                    >
-                      <option value="">-- No Rider --</option>
-                      {riders.map((r) => (
-                        <option key={r.id} value={r.id}>
-                          {r.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
+                        <button
+                          type="button"
+                          onClick={() => assignRiderToArea(area.id, null)}
+                          className="text-[10px] font-sans font-bold text-rose-700 hover:underline cursor-pointer shrink-0"
+                          title="Unassign rider"
+                        >
+                          Unassign
+                        </button>
+                      </div>
+
+                      <span className="text-[9px] font-mono font-bold text-emerald-700 bg-emerald-100/80 px-2 py-0.5 rounded-md border border-emerald-200 w-fit mt-0.5">
+                        ⚡ Approved Rider (Active)
+                      </span>
+                    </div>
+                  ) : pendingReq ? (
+                    <div className="p-2.5 rounded-xl bg-amber-50 border border-amber-300 flex flex-col gap-1.5 text-amber-950 shadow-2xs">
+                      <div className="flex items-center justify-between text-xs font-bold text-amber-900">
+                        <span className="flex items-center gap-1 text-[11px]">
+                          <Hourglass className="w-3.5 h-3.5 text-amber-700 animate-spin" />
+                          <span>Rider Request Pending</span>
+                        </span>
+                      </div>
+
+                      <div className="flex flex-col text-xs font-sans">
+                        <span className="font-bold text-gray-900">{pendingReq.riderName}</span>
+                        <span className="text-[11px] text-gray-600">📞 {pendingReq.riderPhone}</span>
+                        <span className="font-mono text-[10px] text-gray-500">🛵 {pendingReq.vehicleType}</span>
+                      </div>
+
+                      <button
+                        type="button"
+                        onClick={() => approveClusterRequest(pendingReq.id)}
+                        className="w-full py-1.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white font-sans font-bold text-xs shadow-2xs transition-all cursor-pointer flex items-center justify-center gap-1"
+                      >
+                        <Check className="w-3.5 h-3.5" />
+                        <span>Approve Rider Request 🚀</span>
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="p-2.5 rounded-xl bg-gray-50 border border-dashed border-gray-300 flex flex-col items-center justify-center text-center gap-0.5 text-gray-500">
+                      <span className="text-[11px] font-sans font-semibold text-gray-700">
+                        Unclaimed Cluster
+                      </span>
+                      <span className="text-[9px] font-mono text-gray-400">
+                        Waiting for rider request via portal
+                      </span>
+                    </div>
+                  )}
                 </div>
 
                 {/* Clustered Orders inside Area */}
@@ -454,91 +470,6 @@ export const DispatchBoard: FC<DispatchBoardProps> = ({
                       <span>Drop orders here</span>
                     </div>
                   )}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* ══ SECTION 3 (BOTTOM): MADURAI DELIVERY FLEET (RIDERS) ══ */}
-      <div className="w-full bg-[#FAF7F2] border border-[#EACFA5] rounded-2xl p-5 shadow-xs flex flex-col gap-4">
-        <div className="flex items-center justify-between pb-3 border-b border-[#EACFA5]">
-          <div className="flex items-center gap-2">
-            <UserCheck className="w-5 h-5 text-[#8B1A1A]" />
-            <h3 className="font-display font-bold text-base text-[#2C1810]">
-              Madurai Delivery Fleet ({riders.length} Riders)
-            </h3>
-          </div>
-          <span className="text-xs text-black/60 font-sans italic">
-            Drag an Area Column down onto any Rider card below to mass-assign!
-          </span>
-        </div>
-
-        {/* 5 Riders Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3.5 w-full">
-          {riders.map((rider) => {
-            const assignedAreas = areas.filter((a) => a.assignedRiderId === rider.id);
-            const totalRiderOrders = orders.filter(
-              (o) => o.assignedPartner?.id === rider.id && o.status !== 'delivered' && o.status !== 'cancelled'
-            ).length;
-
-            return (
-              <div
-                key={rider.id}
-                onDragOver={(e) => handleDragOver(e, `rider-${rider.id}`)}
-                onDrop={(e) => handleDropOnRider(e, rider.id)}
-                className={`p-3.5 rounded-xl border transition-all flex flex-col gap-2.5 ${
-                  activeDropZone === `rider-${rider.id}`
-                    ? 'bg-amber-100 border-[#D4AF37] ring-2 ring-[#D4AF37]/50 scale-[1.02]'
-                    : 'bg-white border-[#EACFA5] hover:border-[#D4AF37]'
-                }`}
-              >
-                <div className="flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <img src={rider.avatar} alt="" className="w-9 h-9 rounded-full object-cover border-2 border-[#D4AF37] shrink-0" />
-                    <div className="flex flex-col min-w-0">
-                      <span className="font-display font-bold text-xs text-[#2C1810] truncate">{rider.name}</span>
-                      <a href={`tel:${rider.phone}`} className="text-[10px] text-[#8B1A1A] hover:underline flex items-center gap-0.5">
-                        <Phone className="w-2.5 h-2.5" />
-                        <span>{rider.phone}</span>
-                      </a>
-                    </div>
-                  </div>
-
-                  <select
-                    value={rider.status}
-                    onChange={(e) => onToggleRiderStatus(rider.id, e.target.value as any)}
-                    className={`text-[9px] font-sans font-bold py-0.5 px-1.5 rounded-full focus:outline-none cursor-pointer ${
-                      rider.status === 'available'
-                        ? 'bg-emerald-100 text-emerald-800 border border-emerald-300'
-                        : rider.status === 'on_delivery'
-                        ? 'bg-blue-100 text-blue-800 border border-blue-300'
-                        : 'bg-gray-100 text-gray-700 border border-gray-300'
-                    }`}
-                  >
-                    <option value="available">Available</option>
-                    <option value="on_delivery">On Delivery</option>
-                    <option value="offline">Offline</option>
-                  </select>
-                </div>
-
-                <div className="flex items-center justify-between pt-2 border-t border-[#EACFA5]/60 text-xs">
-                  <div className="flex items-center gap-1 flex-wrap">
-                    {assignedAreas.length > 0 ? (
-                      assignedAreas.map((a) => (
-                        <span key={a.id} className="px-1.5 py-0.5 rounded-md bg-[#F5EEE1] border border-[#EACFA5] font-bold text-[9px] text-[#8B1A1A]">
-                          {a.name.split(' ')[0]}
-                        </span>
-                      ))
-                    ) : (
-                      <span className="text-[10px] text-black/40 italic">No Area</span>
-                    )}
-                  </div>
-
-                  <span className="font-mono font-bold text-[11px] px-2 py-0.5 rounded-full bg-[#8B1A1A] text-white">
-                    {totalRiderOrders} Orders
-                  </span>
                 </div>
               </div>
             );

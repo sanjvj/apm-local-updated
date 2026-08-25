@@ -96,6 +96,11 @@ export const PaymentScreen: FC<PaymentScreenProps> = ({
 
     // 1. Register order globally in OrderContext & localStorage
     addOrderToSystem(orderSnapshot);
+    if (selectedAddress?.contactNumber) {
+      try {
+        localStorage.setItem('apm_user_phone', selectedAddress.contactNumber);
+      } catch {}
+    }
 
     // 2. Reduce remaining slot capacity by 1
     if (selectedSlot) {

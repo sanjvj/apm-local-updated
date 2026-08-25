@@ -122,16 +122,24 @@ export const CartScreen: FC<CartScreenProps> = ({ onBackToMenu, onProceedToSlot 
                       <div key={item.id} className="py-4 flex items-start justify-between gap-4">
                         {/* Square Image Thumbnail & Details */}
                         <div className="flex items-start gap-3.5 min-w-0 flex-1">
-                          {/* Square Gradient Thumbnail with Border */}
+                          {/* Product Image Thumbnail */}
                           <div
-                            className="w-16 h-16 sm:w-20 sm:h-20 rounded-xl border border-[var(--line)] aspect-square overflow-hidden shrink-0 flex items-center justify-center text-white relative shadow-2xs"
+                            className="w-16 h-16 sm:w-20 sm:h-20 rounded-xl border border-[var(--line)] aspect-square overflow-hidden shrink-0 flex items-center justify-center text-white relative shadow-2xs bg-[#FAF7F2]"
                             style={{
-                              background: `linear-gradient(135deg, ${item.gradient[0]}, ${item.gradient[1]})`,
+                              background: item.imageUrl ? undefined : `linear-gradient(135deg, ${item.gradient[0]}, ${item.gradient[1]})`,
                             }}
                           >
-                            <span className="relative z-10 uppercase font-serif text-xs sm:text-sm font-bold opacity-90 drop-shadow-xs">
-                              {item.name.slice(0, 2)}
-                            </span>
+                            {item.imageUrl ? (
+                              <img
+                                src={item.imageUrl}
+                                alt={item.name}
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              <span className="relative z-10 uppercase font-serif text-xs sm:text-sm font-bold opacity-90 drop-shadow-xs">
+                                {item.name.slice(0, 2)}
+                              </span>
+                            )}
                           </div>
 
                           {/* Name, Meta line, and Remove Link */}

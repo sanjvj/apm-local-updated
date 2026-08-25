@@ -29,29 +29,60 @@ export const RiderAuthModal: FC<RiderAuthModalProps> = ({ onLoginSuccess }) => {
     e.preventDefault();
     setErrorMsg('');
 
-    const cleanPhone = phone.trim();
+    const cleanPhone = phone.trim().replace(/\D/g, '');
     if (!cleanPhone || cleanPhone.length < 10) {
       setErrorMsg('Please enter a valid 10-digit mobile phone number.');
       return;
     }
 
+    // Get all registered riders including initial delivery partners
+    const initialPartners: GigRiderProfile[] = [
+      { id: 'partner-1', name: 'Muthu Kumar', phone: '9443112345', vehicleType: 'TVS Jupiter (Red)', vehicleNo: 'TN 59 AB 1234', totalEarnings: 0, completedClustersCount: 0 },
+      { id: 'partner-2', name: 'Ramesh Raja', phone: '9842167890', vehicleType: 'Honda Activa 6G (Black)', vehicleNo: 'TN 59 CD 5678', totalEarnings: 0, completedClustersCount: 0 },
+      { id: 'partner-3', name: 'Karthik S', phone: '9789023456', vehicleType: 'Hero Splendor (Blue)', vehicleNo: 'TN 59 EF 9012', totalEarnings: 0, completedClustersCount: 0 },
+      { id: 'partner-4', name: 'Senthil Nathan', phone: '9655434567', vehicleType: 'TVS Heavy Duty XL', vehicleNo: 'TN 59 GH 3456', totalEarnings: 0, completedClustersCount: 0 },
+      { id: 'partner-5', name: 'Saravanan M', phone: '9500145678', vehicleType: 'Honda Dio (Grey)', vehicleNo: 'TN 59 JK 7890', totalEarnings: 0, completedClustersCount: 0 },
+    ];
+
+    let registeredRiders: GigRiderProfile[] = initialPartners;
+    try {
+      const saved = localStorage.getItem('apm_registered_gig_riders');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          // Merge avoiding duplicates
+          const savedFiltered = parsed.filter(p => !initialPartners.some(ip => ip.phone === p.phone.replace(/\D/g, '')));
+          registeredRiders = [...initialPartners, ...savedFiltered];
+        }
+      }
+    } catch {}
+
+    const existingRider = registeredRiders.find((r) => {
+      const rPhone = r.phone.replace(/\D/g, '');
+      return rPhone.includes(cleanPhone) || cleanPhone.includes(rPhone);
+    });
+
     if (isSignup) {
+      if (existingRider) {
+        setErrorMsg(`An account with number "${phone.trim()}" is already registered. Please click "Rider Login" to sign in.`);
+        return;
+      }
+
       if (!name.trim()) {
-        setErrorMsg('Please enter your full name.');
+        setErrorMsg('Please enter your full name to complete registration.');
         return;
       }
 
       const newRider: GigRiderProfile = {
         id: `gig-rider-${Date.now()}`,
         name: name.trim(),
-        phone: cleanPhone,
+        phone: phone.trim(),
         vehicleType,
         vehicleNo: vehicleNo.trim().toUpperCase() || 'TN 59 TEMP',
         totalEarnings: 0,
         completedClustersCount: 0,
       };
 
-      // Save to registered riders in localStorage
       try {
         const saved = localStorage.getItem('apm_registered_gig_riders');
         const ridersList: GigRiderProfile[] = saved ? JSON.parse(saved) : [];
@@ -62,31 +93,14 @@ export const RiderAuthModal: FC<RiderAuthModalProps> = ({ onLoginSuccess }) => {
 
       onLoginSuccess(newRider);
     } else {
-      // Login mode: Check existing riders
-      try {
-        const saved = localStorage.getItem('apm_registered_gig_riders');
-        const ridersList: GigRiderProfile[] = saved ? JSON.parse(saved) : [];
-        const found = ridersList.find((r) => r.phone.includes(cleanPhone) || cleanPhone.includes(r.phone));
+      // Login Mode: Must be registered
+      if (!existingRider) {
+        setErrorMsg(`No registered account found with mobile number "${phone.trim()}". Please click "New Rider Signup" to register first.`);
+        return;
+      }
 
-        if (found) {
-          localStorage.setItem('apm_active_gig_rider', JSON.stringify(found));
-          onLoginSuccess(found);
-          return;
-        }
-      } catch {}
-
-      // Fallback auto-create for quick demo access
-      const defaultRider: GigRiderProfile = {
-        id: `gig-rider-${Date.now()}`,
-        name: name.trim() || 'Annapoorna Delivery Rider',
-        phone: cleanPhone,
-        vehicleType: 'Honda Activa 6G',
-        vehicleNo: 'TN 59 AB 9999',
-        totalEarnings: 0,
-        completedClustersCount: 0,
-      };
-      localStorage.setItem('apm_active_gig_rider', JSON.stringify(defaultRider));
-      onLoginSuccess(defaultRider);
+      localStorage.setItem('apm_active_gig_rider', JSON.stringify(existingRider));
+      onLoginSuccess(existingRider);
     }
   };
 
